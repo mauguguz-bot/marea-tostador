@@ -1393,11 +1393,6 @@ async function savePedido(withPdf=false) {
     DB[key].unshift(record);
     newIdx=0;
   }
-  } else {
-    await postAction({action:'addPedido',tipo,data:record});
-    DB[key].unshift(record);
-    newIdx=0;
-  }
   btn.disabled=false;btn.textContent='Guardar';
   if(withPdf) generatePDF(newIdx, tipo);
   closeModal('pedido');
