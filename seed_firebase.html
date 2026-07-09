@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Marea — Limpiar y resembrar Firebase</title>
+<style>
+  body { font-family: system-ui; background: #111; color: #eee; padding: 40px; max-width: 600px; margin: 0 auto; }
+  h1 { color: #38bdf8; }
+  .btn { padding: 12px 24px; border-radius: 8px; border: none; cursor: pointer; font-size: 15px; font-weight: 700; margin: 8px 4px; }
+  .btn-red { background: #ef4444; color: #fff; }
+  .btn-green { background: #22c55e; color: #000; }
+  .btn-blue { background: #38bdf8; color: #000; }
+  #log { background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 16px; margin-top: 20px; font-family: monospace; font-size: 12px; height: 300px; overflow-y: auto; white-space: pre-wrap; }
+  .ok { color: #22c55e; } .err { color: #ef4444; } .info { color: #38bdf8; }
+</style>
+</head>
+<body>
+<h1>🔧 Herramienta de mantenimiento Firebase</h1>
+<p>Esta página limpia y resimbra la base de datos de Marea & Tostador.</p>
+<button class="btn btn-red" onclick="limpiarTodo()">🗑 1. Limpiar Firebase</button>
+<button class="btn btn-green" onclick="sembrarTodo()">📥 2. Sembrar datos</button>
+<button class="btn btn-blue" onclick="verificar()">✓ 3. Verificar</button>
+<div id="log">Listo para usar...\n</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCLAW2eXh80HNMkAZVlstHmOB9v7Tpq4cE",
+  authDomain: "marea-tostador-1866c.firebaseapp.com",
+  projectId: "marea-tostador-1866c",
+  storageBucket: "marea-tostador-1866c.firebasestorage.app",
+  messagingSenderId: "787539721438",
+  appId: "1:787539721438:web:d64d24d3d854a8aa8f564f"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+function log(msg, type='') {
+  const el = document.getElementById('log');
+  el.innerHTML += `<span class="${type}">${msg}</span>\n`;
+  el.scrollTop = el.scrollHeight;
+}
+
+async function deleteCollection(colName) {
+  log(`Borrando ${colName}...`, 'info');
+  const snap = await getDocs(collection(db, colName));
+  let count = 0;
+  for (const d of snap.docs) {
+    await deleteDoc(doc(db, colName, d.id));
+    count++;
+  }
+  log(`  ✓ ${count} documentos borrados de ${colName}`, 'ok');
+  return count;
+}
+
+window.limpiarTodo = async function() {
+  log('\n=== LIMPIANDO FIREBASE ===', 'info');
+  try {
+    const cols = ['cold','tostador','gastos_cold','gastos_tostador','clientes','_meta'];
+    for (const c of cols) await deleteCollection(c);
+    log('✓ Firebase limpio!', 'ok');
+  } catch(e) {
+    log('ERROR: ' + e.message, 'err');
+  }
+};
+
+window.sembrarTodo = async function() {
+  log('\n=== SEMBRANDO DATOS ===', 'info');
+  try {
+    // Load RAW data
+    const res = await fetch('index.html');
+    const text = await res.text();
+    const match = text.match(/const RAW = (\{.*?\});/s);
+    if (!match) { log('ERROR: No se encontró RAW data en index.html', 'err'); return; }
+    const raw = JSON.parse(match[1]);
+    log(`Datos encontrados: Cold:${raw.cold.length} Tos:${raw.tostador.length} GC:${raw.gastos_cold.length} GT:${raw.gastos_tostador.length}`, 'info');
+
+    const cols = {
+      cold: raw.cold,
+      tostador: raw.tostador, 
+      gastos_cold: raw.gastos_cold,
+      gastos_tostador: raw.gastos_tostador,
+      clientes: raw.clientes || []
+    };
+
+    for (const [colName, records] of Object.entries(cols)) {
+      log(`Sembrando ${colName} (${records.length} registros)...`, 'info');
+      for (const rec of records) {
+        const clean = {};
+        Object.keys(rec).forEach(k => { if(k !== '_row' && k !== '_fbId') clean[k] = rec[k]; });
+        await addDoc(collection(db, colName), clean);
+      }
+      log(`  ✓ ${records.length} registros en ${colName}`, 'ok');
+    }
+
+    // Mark seeded
+    await setDoc(doc(db, '_meta', 'seeded'), { done: true, date: new Date().toISOString() });
+    log('✓ Siembra completada!', 'ok');
+  } catch(e) {
+    log('ERROR: ' + e.message, 'err');
+  }
+};
+
+window.verificar = async function() {
+  log('\n=== VERIFICANDO ===', 'info');
+  try {
+    const cols = ['cold','tostador','gastos_cold','gastos_tostador','clientes'];
+    for (const c of cols) {
+      const snap = await getDocs(collection(db, c));
+      log(`${c}: ${snap.size} documentos`, snap.size > 0 ? 'ok' : 'err');
+    }
+  } catch(e) {
+    log('ERROR: ' + e.message, 'err');
+  }
+};
+</script>
+</body>
+</html>
