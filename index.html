@@ -591,7 +591,10 @@ async function fetchAll() {
       result[col] = snap.docs.map(d => ({ _fbId: d.id, ...d.data() }));
     }
     // Si Firestore está vacío, cargar datos iniciales del RAW
-    if ((result.cold.length < RAW.cold.length || result.tostador.length < RAW.tostador.length || result.gastos_tostador.length < RAW.gastos_tostador.length) && RAW.cold.length > 0) {
+    // Check seeded flag - only seed if never seeded before
+    const metaSnap = await getDocs(collection(db, '_meta'));
+    const isSeeded = metaSnap.docs.some(d => d.id === 'seeded');
+    if (result.cold.length === 0 && !isSeeded && RAW.cold.length > 0) {
       await seedFirebase();
       return fetchAll();
     }
@@ -609,15 +612,18 @@ async function fetchAll() {
 
 async function seedFirebase() {
   setSyncStatus('syncing', 'Cargando historial en Firebase (primera vez)...');
-  const { db, collection, addDoc } = fb();
+  const { db, collection, addDoc, doc, setDoc } = fb();
+  
   const cols = { cold: RAW.cold, tostador: RAW.tostador, gastos_cold: RAW.gastos_cold, gastos_tostador: RAW.gastos_tostador, clientes: RAW.clientes||[] };
   for (const [colName, records] of Object.entries(cols)) {
     for (const rec of records) {
       const clean = {};
-      Object.keys(rec).forEach(k => { if(k !== '_row') clean[k] = rec[k]; });
+      Object.keys(rec).forEach(k => { if(k !== '_row' && k !== '_fbId') clean[k] = rec[k]; });
       await addDoc(collection(db, colName), clean);
     }
   }
+  // Mark as seeded so we never seed again
+  await setDoc(doc(db, '_meta', 'seeded'), { done: true, date: new Date().toISOString() });
   setSyncStatus('', '✓ Historial cargado en Firebase');
 }
 
