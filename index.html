@@ -205,6 +205,7 @@
   };
   document.dispatchEvent(new Event('firebaseReady'));
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -274,6 +275,7 @@
     <button class="nav-tab" onclick="showPage('gastos')">💸 Gastos</button>
     <button class="nav-tab clientes" onclick="showPage('clientes')">👥 Clientes</button>
     <button class="nav-tab" onclick="openReporteModal()" style="color:var(--danger);border:1px solid rgba(248,113,113,.3);margin-left:6px;">📥 Reporte</button>
+    <button class="nav-tab" onclick="exportarExcel()" style="color:var(--success);border:1px solid rgba(52,211,153,.3);margin-left:4px;">💾 Respaldo</button>
   </nav>
 </div>
 
@@ -1547,7 +1549,40 @@ document.addEventListener('firebaseReady', () => {
   init();
 });
 // Fallback si Firebase ya cargó
-if (window._fb) init();
+if (window._fb) 
+// =========== EXPORTAR RESPALDO EXCEL ===========
+function exportarExcel() {
+  const wb = XLSX.utils.book_new();
+  const fecha = new Date().toISOString().slice(0,10);
+
+  // Pedidos Cold
+  const coldHeaders = ['Fecha de pedido','Mes','Nombre de cliente','Producto','Cantidad','Precio','Total','Estatus de pedido','Estatus de pago','Factura','Observaciones'];
+  const coldData = [coldHeaders, ...getData('cold').map(r => coldHeaders.map(h => r[h]||''))];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(coldData), 'Pedidos Cold');
+
+  // Pedidos Tostador
+  const tosData = [coldHeaders, ...getData('tostador').map(r => coldHeaders.map(h => r[h]||''))];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(tosData), 'Pedidos Tostador');
+
+  // Gastos Cold
+  const gastoHeaders = ['Fecha','Mes','Responsable','Concepto de gasto','Monto','Observación'];
+  const gcData = [gastoHeaders, ...getData('gastos_cold').map(r => gastoHeaders.map(h => r[h]||''))];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(gcData), 'Gastos Cold');
+
+  // Gastos Tostador
+  const gtData = [gastoHeaders, ...getData('gastos_tostador').map(r => gastoHeaders.map(h => r[h]||''))];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(gtData), 'Gastos Tostador');
+
+  // Clientes
+  const cliHeaders = ['cliente','empresa','rfc','razon_social','cp','metodo_pago','forma_pago','correo','notas'];
+  const cliData = [cliHeaders, ...getData('clientes').map(r => cliHeaders.map(h => r[h]||''))];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cliData), 'Clientes');
+
+  // Descargar
+  XLSX.writeFile(wb, `Respaldo_Marea_Tostador_${fecha}.xlsx`);
+}
+
+init();
 
 // =========== REPORTE ONE-PAGER PDF ===========
 function openReporteModal() {
