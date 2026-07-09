@@ -591,7 +591,7 @@ async function fetchAll() {
       result[col] = snap.docs.map(d => ({ _fbId: d.id, ...d.data() }));
     }
     // Si Firestore está vacío, cargar datos iniciales del RAW
-    if (result.cold.length < 546 && RAW.cold.length > 0) {
+    if ((result.cold.length < RAW.cold.length || result.tostador.length < RAW.tostador.length || result.gastos_tostador.length < RAW.gastos_tostador.length) && RAW.cold.length > 0) {
       await seedFirebase();
       return fetchAll();
     }
@@ -1554,9 +1554,6 @@ if (window._fb) init();
 
 
 init();
-</script>
-
-
 
 init();
 
