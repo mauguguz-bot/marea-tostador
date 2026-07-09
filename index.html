@@ -1548,11 +1548,9 @@ async function init() {
 document.addEventListener('firebaseReady', () => {
   init();
 });
-/// Fallback si Firebase ya cargó
+// Fallback si Firebase ya cargó
 if (window._fb) init();
-</script>
 
-<script>
 // =========== EXPORTAR RESPALDO EXCEL ===========
 function exportarExcel() {
   const wb = XLSX.utils.book_new();
@@ -1584,6 +1582,11 @@ function exportarExcel() {
   // Descargar
   XLSX.writeFile(wb, `Respaldo_Marea_Tostador_${fecha}.xlsx`);
 }
+
+init();
+</script>
+
+
 
 init();
 
