@@ -968,9 +968,9 @@ function gastoCard(r,idx,tipo) {
 
 function renderGastos() {
   populateGastosYears();
-
   const allGC = getData('gastos_cold');
   const allGT = getData('gastos_tostador');
+  console.log('Gastos Tostador count:', allGT.length, allGT.slice(0,2));
 
   // Filtered data for tables
   const gc = applyGastoFilters([...allGC]).sort((a,b)=>a.Fecha>b.Fecha?-1:1);
@@ -1076,7 +1076,7 @@ function renderGastos() {
 
   // Tables
   document.getElementById('gc-tbody').innerHTML=gc.length?gc.map(r=>gastoRow(r,getGCIdx(r),'cold')).join(''):`<tr><td colspan="6" class="empty-state">Sin gastos en este período</td></tr>`;
-  document.getElementById('gc-cards').innerHTML=gc.length?gc.map(r=>gastoCard(r,getGCIdx(r).indexOf(r),'cold')).join(''):`<div class="empty-state">Sin gastos</div>`;
+  document.getElementById('gc-cards').innerHTML=gc.length?gc.map(r=>gastoCard(r,getGCIdx(r),'cold')).join(''):`<div class="empty-state">Sin gastos</div>`;
   document.getElementById('gt-tbody').innerHTML=gt.length?gt.map(r=>gastoRow(r,getGTIdx(r),'tostador')).join(''):`<tr><td colspan="6" class="empty-state">Sin gastos en este período</td></tr>`;
   document.getElementById('gt-cards').innerHTML=gt.length?gt.map(r=>gastoCard(r,getGTIdx(r),'tostador')).join(''):`<div class="empty-state">Sin gastos</div>`;
 }
