@@ -275,7 +275,7 @@
     <button class="nav-tab" onclick="showPage('gastos')">💸 Gastos</button>
     <button class="nav-tab clientes" onclick="showPage('clientes')">👥 Clientes</button>
     <button class="nav-tab" onclick="openReporteModal()" style="color:var(--danger);border:1px solid rgba(248,113,113,.3);margin-left:6px;">📥 Reporte</button>
-    <button class="nav-tab" onclick="exportarExcel()" style="color:var(--success);border:1px solid rgba(52,211,153,.3);margin-left:4px;">💾 Respaldo</button>
+    <button class="nav-tab" onclick="exportarExcel().catch(e=>alert(e.message))" style="color:var(--success);border:1px solid rgba(52,211,153,.3);margin-left:4px;">💾 Respaldo</button>
   </nav>
 </div>
 
@@ -1986,28 +1986,49 @@ function setReporteRange(range) {
 </script>
 
 <script>
-function exportarExcel() {
+async function exportarExcel() {
   if (typeof XLSX === 'undefined') { alert('Cargando librería, intenta en unos segundos...'); return; }
+  
+  // Leer datos de Firebase directamente
+  let data = { cold: [], tostador: [], gastos_cold: [], gastos_tostador: [], clientes: [] };
+  
+  try {
+    if (window._fb) {
+      const { db, collection, getDocs } = window._fb;
+      const cols = ['cold','tostador','gastos_cold','gastos_tostador','clientes'];
+      for (const col of cols) {
+        const snap = await getDocs(collection(db, col));
+        data[col] = snap.docs.map(d => d.data());
+      }
+    } else if (window.DB) {
+      data = window.DB;
+    } else {
+      alert('No hay conexión con Firebase. Intenta de nuevo en unos segundos.');
+      return;
+    }
+  } catch(e) {
+    alert('Error al leer datos: ' + e.message);
+    return;
+  }
+
   const wb = XLSX.utils.book_new();
   const fecha = new Date().toISOString().slice(0,10);
-
-  function getD(key) {
-    if (window.DB && window.DB[key]) return window.DB[key];
-    try { return JSON.parse(localStorage.getItem('marea_'+key)||'[]'); } catch(e) { return []; }
-  }
 
   const coldH = ['Fecha de pedido','Mes','Nombre de cliente','Producto','Cantidad','Precio','Total','Estatus de pedido','Estatus de pago','Factura','Observaciones'];
   const gastoH = ['Fecha','Mes','Responsable','Concepto de gasto','Monto','Observación'];
   const cliH = ['cliente','empresa','rfc','razon_social','cp','metodo_pago','forma_pago','correo','notas'];
 
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([coldH, ...getD('cold').map(r=>coldH.map(h=>r[h]||''))]), 'Pedidos Cold');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([coldH, ...getD('tostador').map(r=>coldH.map(h=>r[h]||''))]), 'Pedidos Tostador');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([gastoH, ...getD('gastos_cold').map(r=>gastoH.map(h=>r[h]||''))]), 'Gastos Cold');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([gastoH, ...getD('gastos_tostador').map(r=>gastoH.map(h=>r[h]||''))]), 'Gastos Tostador');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([cliH, ...getD('clientes').map(r=>cliH.map(h=>r[h]||''))]), 'Clientes');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([coldH, ...data.cold.map(r=>coldH.map(h=>r[h]||''))]), 'Pedidos Cold');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([coldH, ...data.tostador.map(r=>coldH.map(h=>r[h]||''))]), 'Pedidos Tostador');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([gastoH, ...data.gastos_cold.map(r=>gastoH.map(h=>r[h]||''))]), 'Gastos Cold');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([gastoH, ...data.gastos_tostador.map(r=>gastoH.map(h=>r[h]||''))]), 'Gastos Tostador');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([cliH, ...data.clientes.map(r=>cliH.map(h=>r[h]||''))]), 'Clientes');
 
   XLSX.writeFile(wb, 'Respaldo_Marea_Tostador_' + fecha + '.xlsx');
 }
+  }
+
+
 </script>
 
 </body>
